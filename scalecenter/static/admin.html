@@ -1,0 +1,16 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ScaleCenter Admin</title><link rel="stylesheet" href="style.css"></head><body>
+<header><b>Scale<i>Center</i> Admin</b><nav><a href="index.html">Back to site</a><button onclick="localStorage.clear();location='index.html'">Log out</button></nav></header>
+<main id="app"></main><script src="common.js"></script><script>
+async function load(){
+  let me;try{me=await api("/me");if(!me.is_admin)throw 0}catch{
+    $("#app").innerHTML='<div class="card"><h2>Admin login</h2><div id="e" class="err"></div><input id="em" placeholder="Admin email"><input id="pw" type="password" placeholder="Password"><button class="b" id="go">Log in</button></div>';
+    $("#go").onclick=async()=>{try{const d=await api("/login","POST",{email:$("#em").value,password:$("#pw").value});if(!d.user.is_admin)throw new Error("Not an admin account");localStorage.token=d.token;load()}catch(x){$("#e").textContent=x.message}};return}
+  const [s,u,p]=await Promise.all([api("/admin/stats"),api("/admin/users"),api("/posts")]);
+  $("#app").innerHTML=`<div class="stats">${Object.entries(s).map(([k,v])=>`<div><b>${v}</b>${k}</div>`).join("")}</div>
+  <h2>Users</h2><div style="overflow:auto"><table><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th></th></tr>${u.map(x=>`<tr><td>${esc(x.name)}</td><td>${esc(x.email)}</td><td>${x.role}</td><td>${x.banned?"Suspended":"Active"}</td>
+  <td><button class="b sm alt" onclick="act('ban',${x.id})">${x.banned?"Restore":"Suspend"}</button> <button class="b sm del" onclick="act('del',${x.id})">Delete</button></td></tr>`).join("")}</table></div>
+  <h2>Posts</h2>${p.map(x=>`<div class="card ${x.kind}"><span class="tag">${x.kind}</span><b>${esc(x.title)}</b> <span class="mute">by ${esc(x.author)}</span> <button class="b sm del" onclick="act('post',${x.id})">Remove</button></div>`).join("")||'<p class="mute">No posts yet.</p>'}`;
+}
+async function act(t,id){if(!confirm("Are you sure?"))return;
+  if(t==="ban")await api(`/admin/users/${id}/ban`,"POST");if(t==="del")await api("/admin/users/"+id,"DELETE");if(t==="post")await api("/posts/"+id,"DELETE");load()}
+load();</script></body></html>
